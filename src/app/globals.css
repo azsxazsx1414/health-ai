@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Vazirmatn", ui-sans-serif, system-ui, sans-serif;
+  --color-brand-50: #ecfdf5;
+  --color-brand-100: #d1fae5;
+  --color-brand-400: #34d399;
+  --color-brand-500: #10b981;
+  --color-brand-600: #059669;
+}
+
+html, body {
+  background: #0a0f1c;
+  color: #e5e7eb;
+  font-family: var(--font-sans);
+  min-height: 100vh;
+}
+
+/* پس‌زمینه گرادینتی متحرک */
+.bg-aurora {
+  background:
+    radial-gradient(circle at 20% 20%, rgba(16, 185, 129, 0.25), transparent 40%),
+    radial-gradient(circle at 80% 0%, rgba(59, 130, 246, 0.25), transparent 40%),
+    radial-gradient(circle at 50% 100%, rgba(168, 85, 247, 0.2), transparent 50%),
+    #0a0f1c;
+}
+
+/* کارت شیشه‌ای */
+.glass {
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.glass:hover {
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
+/* دکمه درخشان */
+.btn-glow {
+  background: linear-gradient(135deg, #10b981, #059669);
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
+  transition: all 0.3s ease;
+}
+.btn-glow:hover {
+  box-shadow: 0 0 30px rgba(16, 185, 129, 0.7);
+  transform: translateY(-2px);
+}
+
+/* ورودی فرم */
+.input-glass {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+  transition: all 0.2s;
+}
+.input-glass:focus {
+  outline: none;
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+}
