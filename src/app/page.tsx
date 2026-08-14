@@ -1,17 +1,25 @@
 "use client";
 
-import { useState } from "react";
+// HOME PAGE - صفحه اصلی
+
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import Link from "next/link";
 import {
   Droplets,
   Flame,
   Footprints,
   HeartPulse,
+  LayoutDashboard,
+  LogOut,
   Sparkles,
   Thermometer,
   UtensilsCrossed,
   Weight,
 } from "lucide-react";
+import { auth, db } from "@/lib/firebase";
+import { onAuthStateChanged, signOut } from "firebase/auth";
+import { doc, setDoc } from "firebase/firestore";
 
 const MEALS = [
   {
@@ -36,8 +44,17 @@ export default function Home() {
   const [steps, setSteps] = useState("");
   const [temp, setTemp] = useState("");
   const [plan, setPlan] = useState<{ water: number; calories: number } | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
 
-  const showPlan = () => {
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (user) => {
+      setUserId(user?.uid ?? null);
+    });
+    return unsub;
+  }, []);
+
+  const showPlan = async () => {
     const w = parseFloat(weight) || 70;
     const s = parseFloat(steps) || 5000;
     const t = parseFloat(temp) || 25;
@@ -48,7 +65,28 @@ export default function Home() {
     const calories = Math.round(w * 24 * (1.2 + (s / 20000) * 0.6));
 
     setPlan({ water, calories });
+    setSaved(false);
+
+    if (userId) {
+      const date = new Date().toISOString().slice(0, 10);
+      try {
+        await setDoc(doc(db, "logs", `${userId}_${date}`), {
+          user_id: userId,
+          log_date: date,
+          weight: w,
+          steps: s,
+          temperature: t,
+          water,
+          calories,
+        });
+        setSaved(true);
+      } catch {
+        setSaved(false);
+      }
+    }
   };
+
+  const logout = () => signOut(auth);
 
   return (
     <div className="bg-aurora min-h-screen">
@@ -59,10 +97,29 @@ export default function Home() {
           </div>
           <span className="text-xl font-black">سلامت‌یار</span>
         </div>
-        <span className="glass flex items-center gap-2 rounded-full px-4 py-2 text-xs text-brand-400">
-          <Sparkles className="h-4 w-4" />
-          مبتنی بر هوش مصنوعی
-        </span>
+        {userId ? (
+          <div className="flex items-center gap-2">
+            <Link
+              href="/dashboard"
+              className="glass flex items-center gap-2 rounded-full px-4 py-2 text-xs text-brand-400"
+            >
+              <LayoutDashboard className="h-4 w-4" /> داشبورد من
+            </Link>
+            <button
+              onClick={logout}
+              className="glass flex items-center gap-2 rounded-full px-4 py-2 text-xs text-red-400"
+            >
+              <LogOut className="h-4 w-4" /> خروج
+            </button>
+          </div>
+        ) : (
+          <Link
+            href="/auth"
+            className="glass flex items-center gap-2 rounded-full px-4 py-2 text-xs text-brand-400"
+          >
+            <Sparkles className="h-4 w-4" /> ورود / ثبت‌نام
+          </Link>
+        )}
       </header>
 
       <main className="mx-auto max-w-5xl px-4 pb-24">
@@ -92,8 +149,7 @@ export default function Home() {
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <label className="block">
               <span className="mb-2 flex items-center gap-2 text-sm text-gray-300">
-                <Weight className="h-4 w-4 text-brand-400" />
-                وزن (کیلوگرم)
+                <Weight className="h-4 w-4 text-brand-400" /> وزن (کیلوگرم)
               </span>
               <input
                 value={weight}
@@ -103,11 +159,9 @@ export default function Home() {
                 className="input-glass w-full rounded-xl px-4 py-3"
               />
             </label>
-
             <label className="block">
               <span className="mb-2 flex items-center gap-2 text-sm text-gray-300">
-                <Footprints className="h-4 w-4 text-brand-400" />
-                قدم‌های امروز
+                <Footprints className="h-4 w-4 text-brand-400" /> قدم‌های امروز
               </span>
               <input
                 value={steps}
@@ -117,11 +171,9 @@ export default function Home() {
                 className="input-glass w-full rounded-xl px-4 py-3"
               />
             </label>
-
             <label className="block">
               <span className="mb-2 flex items-center gap-2 text-sm text-gray-300">
-                <Thermometer className="h-4 w-4 text-brand-400" />
-                دمای هوا (°C)
+                <Thermometer className="h-4 w-4 text-brand-400" /> دمای هوا (°C)
               </span>
               <input
                 value={temp}
@@ -139,6 +191,21 @@ export default function Home() {
           >
             دریافت برنامه امروز من ✨
           </button>
+
+          {saved && (
+            <p className="mt-4 text-center text-sm text-brand-400">
+              ✅ برنامه امروزت توی تاریخچه ذخیره شد
+            </p>
+          )}
+          {!userId && (
+            <p className="mt-4 text-center text-sm text-gray-400">
+              برای ذخیره تاریخچه و دیدن نمودارها، اول{" "}
+              <Link href="/auth" className="text-brand-400 underline">
+                ثبت‌نام
+              </Link>{" "}
+              کن
+            </p>
+          )}
         </motion.section>
 
         {plan && (
