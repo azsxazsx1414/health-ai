@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import {
+  Bot,
   Droplets,
   Flame,
   Footprints,
@@ -21,23 +22,7 @@ import { auth, db } from "@/lib/firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
 
-const MEALS = [
-  {
-    name: "عدسی با روغن زیتون و لیمو",
-    desc: "سرشار از پروتئین و فیبر | آماده در ۲۰ دقیقه",
-    cal: 320,
-  },
-  {
-    name: "سینه مرغ گریل با سبزیجات",
-    desc: "کم‌چرب و سیرکننده | همراه با برنج کم",
-    cal: 450,
-  },
-  {
-    name: "ماست و خیار با گردو و کشمش",
-    desc: "سبک و خنک | عالی برای هوای گرم",
-    cal: 250,
-  },
-];
+type Meal = { name: string; desc: string; cal: number };
 
 export default function Home() {
   const [weight, setWeight] = useState("");
@@ -46,6 +31,8 @@ export default function Home() {
   const [plan, setPlan] = useState<{ water: number; calories: number } | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [meals, setMeals] = useState<Meal[]>([]);
+  const [mealsLoading, setMealsLoading] = useState(false);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (user) => {
@@ -66,6 +53,17 @@ export default function Home() {
 
     setPlan({ water, calories });
     setSaved(false);
+    setMealsLoading(true);
+    setMeals([]);
+
+    try {
+      const res = await fetch(`/api/meals?calories=${calories}&temp=${t}`);
+      const data = await res.json();
+      setMeals(data.meals);
+    } catch {
+      setMeals([]);
+    }
+    setMealsLoading(false);
 
     if (userId) {
       const date = new Date().toISOString().slice(0, 10);
@@ -233,20 +231,27 @@ export default function Home() {
             </div>
 
             <h2 className="mt-10 mb-4 flex items-center gap-2 text-xl font-bold">
-              <UtensilsCrossed className="h-6 w-6 text-brand-400" />
-              سه پیشنهاد غذایی ساده و در دسترس
+              <Bot className="h-6 w-6 text-brand-400" />
+              پیشنهاد غذایی هوش مصنوعی
             </h2>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              {MEALS.map((m) => (
-                <div key={m.name} className="glass rounded-3xl p-5">
-                  <p className="font-bold">{m.name}</p>
-                  <p className="mt-2 text-sm text-gray-400">{m.desc}</p>
-                  <span className="mt-3 inline-block rounded-full bg-orange-500/20 px-3 py-1 text-xs text-orange-300">
-                    {m.cal.toLocaleString("fa-IR")} کالری
-                  </span>
-                </div>
-              ))}
-            </div>
+
+            {mealsLoading ? (
+              <p className="glass animate-pulse rounded-3xl p-6 text-center text-gray-300">
+                🤖 هوش مصنوعی داره به وضعیتت فکر می‌کنه...
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                {meals.map((m) => (
+                  <div key={m.name} className="glass rounded-3xl p-5">
+                    <p className="font-bold">{m.name}</p>
+                    <p className="mt-2 text-sm text-gray-400">{m.desc}</p>
+                    <span className="mt-3 inline-block rounded-full bg-orange-500/20 px-3 py-1 text-xs text-orange-300">
+                      {m.cal.toLocaleString("fa-IR")} کالری
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </motion.section>
         )}
       </main>
