@@ -9,6 +9,7 @@ export const metadata: Metadata = {
   title: "سلامت‌یار | دستیار هوشمند سلامتی",
   description: "برنامه شخصی‌سازی شده آب، کالری و تغذیه با هوش مصنوعی",
 };
+import WaterReminder from "@/components/WaterReminder";
 
 export default function RootLayout({
   children,
@@ -17,7 +18,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fa" dir="rtl">
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">{children}<WaterReminder /></body>
     </html>
   );
 }
