@@ -18,7 +18,7 @@ const FALLBACK = [
   },
 ];
 
-const MODELS = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash"];
+const MODELS = ["gemini-3.6-flash", "gemini-3.5-flash-lite"];
 
 type DebugInfo = { model: string; status?: number; error?: string };
 
@@ -44,9 +44,6 @@ export async function GET(req: Request) {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               contents: [{ parts: [{ text: prompt }] }],
-              generationConfig: {
-                thinkingConfig: { thinkingBudget: 0 },
-              },
             }),
           }
         );
@@ -65,7 +62,7 @@ export async function GET(req: Request) {
           .split("\n")
           .map((l: string) => l.trim().replace(/^\d+[.)-]?\s*/, ""))
           .filter((l: string) => l.includes("|"));
-        const meals = lines.slice(0, 3).map((line: string) => {
+        const meals = lines.slice(-3).map((line: string) => {
           const p: string[] = line.split("|").map((x: string) => x.trim());
           return {
             name: p[0] || "غذای ساده",
