@@ -18,7 +18,7 @@ const FALLBACK = [
   },
 ];
 
-const MODELS = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
+const MODELS = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash"];
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -39,22 +39,26 @@ export async function GET(req: Request) {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               contents: [{ parts: [{ text: prompt }] }],
+              generationConfig: {
+                thinkingConfig: { thinkingBudget: 0 },
+              },
             }),
           }
         );
         if (!res.ok) continue;
         const data = await res.json();
-        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+        const parts = data?.candidates?.[0]?.content?.parts || [];
+        const text = parts.map((p: any) => p.text || "").join("\n");
         const lines = text
           .split("\n")
           .map((l) => l.trim().replace(/^\d+[.)-]?\s*/, ""))
           .filter((l) => l.includes("|"));
         const meals = lines.slice(0, 3).map((line) => {
-          const parts = line.split("|").map((p) => p.trim());
+          const p = line.split("|").map((x) => x.trim());
           return {
-            name: parts[0] || "غذای ساده",
-            cal: parseInt(parts[1]) || 300,
-            desc: parts[2] || "",
+            name: p[0] || "غذای ساده",
+            cal: parseInt(p[1]) || 300,
+            desc: p[2] || "",
           };
         });
         if (meals.length > 0) {
