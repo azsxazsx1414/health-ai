@@ -20,16 +20,21 @@ const FALLBACK = [
 
 const MODELS = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash"];
 
+type DebugInfo = { model: string; status?: number; error?: string };
+
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const calories = searchParams.get("calories") || "2000";
   const temp = searchParams.get("temp") || "25";
   const key = process.env.GEMINI_API_KEY;
+  const debug: DebugInfo[] = [];
 
   const prompt = `تو یک متخصص تغذیه ایرانی هستی. برای یک روز با کالری هدف ${calories} و هوای ${temp} درجه، سه غذای ساده، ارزان و در دسترس در ایران پیشنهاد بده. جواب رو دقیقاً با این فرمت و بدون توضیح اضافه برگردون (هر غذا یک خط):
 نام غذا | کالری تقریبی | یک جمله کوتاه درباره‌ش`;
 
-  if (key) {
+  if (!key) {
+    debug.push({ model: "none", error: "key not found" });
+  } else {
     for (const model of MODELS) {
       try {
         const res = await fetch(
@@ -45,7 +50,11 @@ export async function GET(req: Request) {
             }),
           }
         );
-        if (!res.ok) continue;
+        if (!res.ok) {
+          const errText = await res.text();
+          debug.push({ model, status: res.status, error: errText.slice(0, 200) });
+          continue;
+        }
         const data: any = await res.json();
         const parts: Array<{ text?: string }> =
           data?.candidates?.[0]?.content?.parts || [];
@@ -67,11 +76,13 @@ export async function GET(req: Request) {
         if (meals.length > 0) {
           return NextResponse.json({ meals, source: "ai" });
         }
-      } catch {
+        debug.push({ model, error: "parsed 0 meals" });
+      } catch (e: unknown) {
+        debug.push({ model, error: String(e) });
         continue;
       }
     }
   }
 
-  return NextResponse.json({ meals: FALLBACK, source: "fallback" });
+  return NextResponse.json({ meals: FALLBACK, source: "fallback", debug });
 }
