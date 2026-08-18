@@ -12,6 +12,9 @@ export default function WaterReminder() {
   useEffect(() => {
     if (typeof Notification !== "undefined") {
       setPermission(Notification.permission);
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("/sw.js").catch(() => {});
+      }
     }
     return () => {
       if (timer.current) clearInterval(timer.current);
