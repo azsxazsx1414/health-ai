@@ -46,15 +46,18 @@ export async function GET(req: Request) {
           }
         );
         if (!res.ok) continue;
-        const data = await res.json();
-        const parts = data?.candidates?.[0]?.content?.parts || [];
-        const text = parts.map((p: any) => p.text || "").join("\n");
-        const lines = text
+        const data: any = await res.json();
+        const parts: Array<{ text?: string }> =
+          data?.candidates?.[0]?.content?.parts || [];
+        const text: string = parts
+          .map((p: { text?: string }) => p.text || "")
+          .join("\n");
+        const lines: string[] = text
           .split("\n")
-          .map((l) => l.trim().replace(/^\d+[.)-]?\s*/, ""))
-          .filter((l) => l.includes("|"));
-        const meals = lines.slice(0, 3).map((line) => {
-          const p = line.split("|").map((x) => x.trim());
+          .map((l: string) => l.trim().replace(/^\d+[.)-]?\s*/, ""))
+          .filter((l: string) => l.includes("|"));
+        const meals = lines.slice(0, 3).map((line: string) => {
+          const p: string[] = line.split("|").map((x: string) => x.trim());
           return {
             name: p[0] || "غذای ساده",
             cal: parseInt(p[1]) || 300,
