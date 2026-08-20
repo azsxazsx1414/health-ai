@@ -12,6 +12,7 @@ import {
   LayoutDashboard,
   LogOut,
   Moon,
+  Shield,
   Sparkles,
   Thermometer,
   User,
@@ -57,10 +58,12 @@ export default function Home() {
   const [mealsLoading, setMealsLoading] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (user) => {
       setUserId(user?.uid ?? null);
+      setIsAdmin(user?.email === "test@test.com");
     });
     return unsub;
   }, []);
@@ -155,6 +158,14 @@ export default function Home() {
             >
               <User className="h-4 w-4" /> پروفایل
             </Link>
+            {isAdmin && (
+              <Link
+                href="/admin"
+                className="glass flex items-center gap-2 rounded-full px-4 py-2 text-xs text-orange-400"
+              >
+                <Shield className="h-4 w-4" /> پنل مدیریت
+              </Link>
+            )}
             <button
               onClick={logout}
               className="glass flex items-center gap-2 rounded-full px-4 py-2 text-xs text-red-400"
