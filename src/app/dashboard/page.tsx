@@ -7,6 +7,8 @@ import {
   Droplets,
   Footprints,
   Moon,
+  Sparkles,
+  TrendingUp,
   Weight,
 } from "lucide-react";
 import {
@@ -44,6 +46,8 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
   const [height, setHeight] = useState(0);
+  const [analysis, setAnalysis] = useState("");
+  const [analysisLoading, setAnalysisLoading] = useState(false);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
@@ -100,6 +104,54 @@ export default function DashboardPage() {
       : score >= 50
         ? "text-orange-400"
         : "text-red-400";
+
+  let trendText = "";
+  let predicted: number | null = null;
+  if (logs.length >= 2) {
+    const n = logs.length;
+    const ys: number[] = logs.map((l) => Number(l.weight) || 0);
+    const xs: number[] = logs.map((l, i) => i);
+    const sx = xs.reduce((a, b) => a + b, 0);
+    const sy = ys.reduce((a, b) => a + b, 0);
+    const sxy = xs.reduce((a, x, i) => a + x * ys[i], 0);
+    const sxx = xs.reduce((a, x) => a + x * x, 0);
+    const denom = n * sxx - sx * sx;
+    if (denom !== 0) {
+      const slope = (n * sxy - sx * sy) / denom;
+      predicted = ys[n - 1] + slope * 30;
+      trendText = slope < -0.03 ? "کاهشی 📉" : slope > 0.03 ? "افزایشی 📈" : "ثابت ➖";
+    }
+  }
+
+  const avgWater =
+    logs.length > 0
+      ? logs.reduce((a, l) => a + (Number(l.water_consumed) || 0), 0) /
+        logs.length
+      : 0;
+  const avgSteps =
+    logs.length > 0
+      ? logs.reduce((a, l) => a + (Number(l.steps) || 0), 0) / logs.length
+      : 0;
+
+  const runAnalysis = async () => {
+    setAnalysisLoading(true);
+    try {
+      const params = new URLSearchParams({
+        water: avgWater.toFixed(1),
+        waterTarget: latest ? String(latest.water) : "2.5",
+        steps: String(Math.round(avgSteps)),
+        trend: trendText || "نامشخص",
+        predicted: predicted ? predicted.toFixed(1) : "",
+        score: String(score),
+      });
+      const res = await fetch(`/api/analysis?${params.toString()}`);
+      const data = await res.json();
+      setAnalysis(data.text || "تحلیل در دسترس نیست.");
+    } catch {
+      setAnalysis("خطا در دریافت تحلیل.");
+    }
+    setAnalysisLoading(false);
+  };
 
   const chartData = logs.map((l) => ({
     ...l,
@@ -185,14 +237,48 @@ export default function DashboardPage() {
                   </div>
                 </div>
               </div>
-              {latest &&
-                ((Number(latest.water_consumed) || 0) === 0 ||
-                  (Number(latest.sleep) || 0) === 0) && (
-                  <p className="mt-4 text-center text-xs text-gray-400">
-                    برای امتیاز کامل، آب مصرفی و خوابت رو هم توی فرم صفحه اصلی
-                    ثبت کن.
+            </div>
+
+            <div className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <div className="glass rounded-3xl p-6">
+                <h2 className="mb-3 flex items-center gap-2 text-lg font-bold">
+                  <TrendingUp className="h-5 w-5 text-brand-400" /> پیش‌بینی روند وزن
+                </h2>
+                {predicted !== null ? (
+                  <div className="space-y-2 text-sm text-gray-300">
+                    <p>
+                      روند وزن شما:{" "}
+                      <span className="font-bold text-white">{trendText}</span>
+                    </p>
+                    <p>
+                      وزن پیش‌بینی‌شده ۳۰ روز آینده:{" "}
+                      <span className="font-bold text-white">
+                        {predicted.toFixed(1)} کیلوگرم
+                      </span>
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-400">
+                    برای پیش‌بینی روند، حداقل دو روز ثبت وزن لازمه.
                   </p>
                 )}
+              </div>
+
+              <div className="glass rounded-3xl p-6">
+                <h2 className="mb-3 flex items-center gap-2 text-lg font-bold">
+                  <Sparkles className="h-5 w-5 text-orange-400" /> تحلیل هوشمند وضعیت
+                </h2>
+                <button
+                  onClick={runAnalysis}
+                  disabled={analysisLoading}
+                  className="btn-glow rounded-xl px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
+                >
+                  {analysisLoading ? "در حال تحلیل..." : "تحلیل با هوش مصنوعی 🤖"}
+                </button>
+                {analysis && (
+                  <p className="mt-3 text-sm leading-7 text-gray-300">{analysis}</p>
+                )}
+              </div>
             </div>
 
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -211,7 +297,6 @@ export default function DashboardPage() {
                           background: "#0f172a",
                           border: "1px solid rgba(255,255,255,0.1)",
                           borderRadius: 12,
-                          direction: "rtl",
                         }}
                       />
                       <Line
@@ -245,7 +330,6 @@ export default function DashboardPage() {
                           background: "#0f172a",
                           border: "1px solid rgba(255,255,255,0.1)",
                           borderRadius: 12,
-                          direction: "rtl",
                         }}
                       />
                       <Line
