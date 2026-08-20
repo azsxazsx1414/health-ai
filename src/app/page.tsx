@@ -17,6 +17,7 @@ import {
   Thermometer,
   UtensilsCrossed,
   Weight,
+  User,
 } from "lucide-react";
 import { auth, db } from "@/lib/firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
@@ -103,6 +104,12 @@ export default function Home() {
             >
               <LayoutDashboard className="h-4 w-4" /> داشبورد من
             </Link>
+            <Link
+  href="/profile"
+  className="glass flex items-center gap-2 rounded-full px-4 py-2 text-xs text-brand-400"
+>
+  <User className="h-4 w-4" /> پروفایل
+</Link>
             <button
               onClick={logout}
               className="glass flex items-center gap-2 rounded-full px-4 py-2 text-xs text-red-400"
