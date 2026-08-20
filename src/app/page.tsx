@@ -1,7 +1,5 @@
 "use client";
 
-// HOME PAGE - صفحه اصلی
-
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
@@ -13,12 +11,12 @@ import {
   HeartPulse,
   LayoutDashboard,
   LogOut,
+  Moon,
   Sparkles,
   Thermometer,
+  User,
   UtensilsCrossed,
   Weight,
-  User,
-  Moon,
 } from "lucide-react";
 import { auth, db } from "@/lib/firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
@@ -26,19 +24,39 @@ import { doc, getDoc, setDoc } from "firebase/firestore";
 
 type Meal = { name: string; desc: string; cal: number };
 
+const FALLBACK_MEALS: Meal[] = [
+  {
+    name: "عدسی با روغن زیتون و لیمو",
+    desc: "سرشار از پروتئین و فیبر | آماده در ۲۰ دقیقه",
+    cal: 320,
+  },
+  {
+    name: "سینه مرغ گریل با سبزیجات",
+    desc: "کم‌چرب و سیرکننده | همراه با برنج کم",
+    cal: 450,
+  },
+  {
+    name: "ماست و خیار با گردو و کشمش",
+    desc: "سبک و خنک | عالی برای هوای گرم",
+    cal: 250,
+  },
+];
+
 export default function Home() {
   const [weight, setWeight] = useState("");
   const [steps, setSteps] = useState("");
   const [temp, setTemp] = useState("");
-  const [plan, setPlan] = useState<{ water: number; calories: number } | null>(null);
-  const [userId, setUserId] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
-  const [meals, setMeals] = useState<Meal[]>([]);
-  const [mealsLoading, setMealsLoading] = useState(false);
   const [waterIn, setWaterIn] = useState("");
+  const [sleep, setSleep] = useState("");
   const [ingredients, setIngredients] = useState("");
   const [goal, setGoal] = useState("");
-const [sleep, setSleep] = useState("");
+  const [plan, setPlan] = useState<{ water: number; calories: number } | null>(
+    null
+  );
+  const [meals, setMeals] = useState<Meal[]>(FALLBACK_MEALS);
+  const [mealsLoading, setMealsLoading] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (user) => {
@@ -46,6 +64,7 @@ const [sleep, setSleep] = useState("");
     });
     return unsub;
   }, []);
+
   useEffect(() => {
     const fetchGoal = async () => {
       const uid = auth.currentUser?.uid;
@@ -68,7 +87,7 @@ const [sleep, setSleep] = useState("");
     const s = parseFloat(steps) || 5000;
     const t = parseFloat(temp) || 25;
     const wc = parseFloat(waterIn) || 0;
-const sl = parseFloat(sleep) || 0;
+    const sl = parseFloat(sleep) || 0;
 
     const water = Number(
       (w * 0.033 + (s / 1000) * 0.25 + Math.max(0, t - 25) * 0.15).toFixed(1)
@@ -78,18 +97,6 @@ const sl = parseFloat(sleep) || 0;
     setPlan({ water, calories });
     setSaved(false);
     setMealsLoading(true);
-    setMeals([]);
-
-    try {
-      const res = await fetch(
-        `/api/meals?calories=${calories}&temp=${t}&goal=${encodeURIComponent(goal)}&ingredients=${encodeURIComponent(ingredients)}`
-      );
-      const data = await res.json();
-      setMeals(data.meals);
-    } catch {
-      setMeals([]);
-    }
-    setMealsLoading(false);
 
     if (userId) {
       const date = new Date().toISOString().slice(0, 10);
@@ -100,16 +107,27 @@ const sl = parseFloat(sleep) || 0;
           weight: w,
           steps: s,
           temperature: t,
-          water_consumed: wc,
-sleep: sl,
           water,
           calories,
+          water_consumed: wc,
+          sleep: sl,
         });
         setSaved(true);
       } catch {
         setSaved(false);
       }
     }
+
+    try {
+      const res = await fetch(
+        `/api/meals?calories=${calories}&temp=${t}&goal=${encodeURIComponent(goal)}&ingredients=${encodeURIComponent(ingredients)}`
+      );
+      const data = await res.json();
+      if (data.meals && data.meals.length > 0) setMeals(data.meals);
+    } catch {
+      setMeals(FALLBACK_MEALS);
+    }
+    setMealsLoading(false);
   };
 
   const logout = () => signOut(auth);
@@ -132,11 +150,11 @@ sleep: sl,
               <LayoutDashboard className="h-4 w-4" /> داشبورد من
             </Link>
             <Link
-  href="/profile"
-  className="glass flex items-center gap-2 rounded-full px-4 py-2 text-xs text-brand-400"
->
-  <User className="h-4 w-4" /> پروفایل
-</Link>
+              href="/profile"
+              className="glass flex items-center gap-2 rounded-full px-4 py-2 text-xs text-brand-400"
+            >
+              <User className="h-4 w-4" /> پروفایل
+            </Link>
             <button
               onClick={logout}
               className="glass flex items-center gap-2 rounded-full px-4 py-2 text-xs text-red-400"
@@ -216,6 +234,7 @@ sleep: sl,
               />
             </label>
           </div>
+
           <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
             <label className="block">
               <span className="mb-2 flex items-center gap-2 text-sm text-gray-300">
@@ -242,12 +261,8 @@ sleep: sl,
               />
             </label>
           </div>
-          <button
-            onClick={showPlan}
-            className="btn-glow mt-6 w-full rounded-xl py-4 text-lg font-bold text-white"
-          >
-            دریافت برنامه امروز من ✨
-            <label className="mt-4 block">
+
+          <label className="mt-4 block">
             <span className="mb-2 block text-sm text-gray-300">
               🧺 مواد غذایی در دسترس (اختیاری) — مثلاً: مرغ، برنج، اسفناج
             </span>
@@ -258,6 +273,12 @@ sleep: sl,
               className="input-glass w-full rounded-xl px-4 py-3"
             />
           </label>
+
+          <button
+            onClick={showPlan}
+            className="btn-glow mt-6 w-full rounded-xl py-4 text-lg font-bold text-white"
+          >
+            دریافت برنامه امروز من ✨
           </button>
 
           {saved && (
@@ -301,13 +322,13 @@ sleep: sl,
             </div>
 
             <h2 className="mt-10 mb-4 flex items-center gap-2 text-xl font-bold">
-              <Bot className="h-6 w-6 text-brand-400" />
-              پیشنهاد غذایی هوش مصنوعی
+              <UtensilsCrossed className="h-6 w-6 text-brand-400" />
+              پیشنهادهای غذایی امروز
             </h2>
-
             {mealsLoading ? (
-              <p className="glass animate-pulse rounded-3xl p-6 text-center text-gray-300">
-                🤖 هوش مصنوعی داره به وضعیتت فکر می‌کنه...
+              <p className="glass flex items-center gap-2 rounded-2xl p-4 text-sm text-gray-300">
+                <Bot className="h-5 w-5 animate-pulse text-brand-400" />
+                هوش مصنوعی داره برات غذا انتخاب می‌کنه...
               </p>
             ) : (
               <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
