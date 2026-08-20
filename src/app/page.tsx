@@ -137,7 +137,7 @@ export default function Home() {
 
   return (
     <div className="bg-aurora min-h-screen">
-      <header className="flex items-center justify-between px-6 md:px-12 py-5">
+      <header className="flex flex-wrap items-center justify-between gap-3 px-4 md:px-12 py-5">
         <div className="flex items-center gap-3">
           <div className="btn-glow flex h-10 w-10 items-center justify-center rounded-2xl">
             <HeartPulse className="h-6 w-6 text-white" />
@@ -145,7 +145,7 @@ export default function Home() {
           <span className="text-xl font-black">سلامت‌یار</span>
         </div>
         {userId ? (
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
             <Link
               href="/dashboard"
               className="glass flex items-center gap-2 rounded-full px-4 py-2 text-xs text-brand-400"
