@@ -26,6 +26,7 @@ import { collection, getDocs } from "firebase/firestore";
 type Log = {
   user_id: string;
   log_date: string;
+  weight: number;
   water: number;
   steps: number;
   water_consumed?: number;
@@ -130,7 +131,7 @@ export default function AdminPage() {
               <div className="glass rounded-3xl p-5 text-center">
                 <Droplets className="mx-auto h-7 w-7 text-blue-400" />
                 <p className="mt-2 text-3xl font-black">
-                  {avgWater.toFixed(1).toLocaleString("fa-IR")}
+                {avgWater.toFixed(1)}
                 </p>
                 <p className="mt-1 text-xs text-gray-400">میانگین آب (لیتر)</p>
               </div>
