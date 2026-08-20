@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { auth, db } from "@/lib/firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 
 type Meal = { name: string; desc: string; cal: number };
 
@@ -36,6 +36,8 @@ export default function Home() {
   const [meals, setMeals] = useState<Meal[]>([]);
   const [mealsLoading, setMealsLoading] = useState(false);
   const [waterIn, setWaterIn] = useState("");
+  const [ingredients, setIngredients] = useState("");
+  const [goal, setGoal] = useState("");
 const [sleep, setSleep] = useState("");
 
   useEffect(() => {
@@ -44,6 +46,22 @@ const [sleep, setSleep] = useState("");
     });
     return unsub;
   }, []);
+  useEffect(() => {
+    const fetchGoal = async () => {
+      const uid = auth.currentUser?.uid;
+      if (!uid) return;
+      try {
+        const pSnap = await getDoc(doc(db, "users", uid));
+        if (pSnap.exists()) {
+          const pd: any = pSnap.data();
+          setGoal(pd.goal || "");
+        }
+      } catch {
+        /* ignore */
+      }
+    };
+    fetchGoal();
+  }, [userId]);
 
   const showPlan = async () => {
     const w = parseFloat(weight) || 70;
@@ -63,7 +81,9 @@ const sl = parseFloat(sleep) || 0;
     setMeals([]);
 
     try {
-      const res = await fetch(`/api/meals?calories=${calories}&temp=${t}`);
+      const res = await fetch(
+        `/api/meals?calories=${calories}&temp=${t}&goal=${encodeURIComponent(goal)}&ingredients=${encodeURIComponent(ingredients)}`
+      );
       const data = await res.json();
       setMeals(data.meals);
     } catch {
@@ -227,6 +247,17 @@ sleep: sl,
             className="btn-glow mt-6 w-full rounded-xl py-4 text-lg font-bold text-white"
           >
             دریافت برنامه امروز من ✨
+            <label className="mt-4 block">
+            <span className="mb-2 block text-sm text-gray-300">
+              🧺 مواد غذایی در دسترس (اختیاری) — مثلاً: مرغ، برنج، اسفناج
+            </span>
+            <input
+              value={ingredients}
+              onChange={(e) => setIngredients(e.target.value)}
+              placeholder="مواد غذایی که تو خونه داری بنویس..."
+              className="input-glass w-full rounded-xl px-4 py-3"
+            />
+          </label>
           </button>
 
           {saved && (

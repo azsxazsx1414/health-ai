@@ -20,21 +20,31 @@ const FALLBACK = [
 
 const MODELS = ["gemini-3.6-flash", "gemini-3.5-flash-lite"];
 
-type DebugInfo = { model: string; status?: number; error?: string };
-
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const calories = searchParams.get("calories") || "2000";
   const temp = searchParams.get("temp") || "25";
+  const goal = searchParams.get("goal") || "";
+  const ingredients = searchParams.get("ingredients") || "";
   const key = process.env.GEMINI_API_KEY;
-  const debug: DebugInfo[] = [];
 
-  const prompt = `تو یک متخصص تغذیه ایرانی هستی. برای یک روز با کالری هدف ${calories} و هوای ${temp} درجه، سه غذای ساده، ارزان و در دسترس در ایران پیشنهاد بده. جواب رو دقیقاً با این فرمت و بدون توضیح اضافه برگردون (هر غذا یک خط):
+  const goalFa =
+    goal === "lose"
+      ? "کاهش وزن"
+      : goal === "gain"
+        ? "افزایش وزن"
+        : goal === "maintain"
+          ? "حفظ وزن"
+          : "";
+
+  const prompt = `تو یک متخصص تغذیه ایرانی هستی. برای یک روز با کالری هدف ${calories} و هوای ${temp} درجه${
+    goalFa ? ` و هدف کاربر: ${goalFa}` : ""
+  }${
+    ingredients ? ` و مواد غذایی در دسترس: ${ingredients}` : ""
+  }، سه غذای ساده، ارزان و در دسترس در ایران پیشنهاد بده. جواب رو دقیقاً با این فرمت و بدون توضیح اضافه برگردون (هر غذا یک خط):
 نام غذا | کالری تقریبی | یک جمله کوتاه درباره‌ش`;
 
-  if (!key) {
-    debug.push({ model: "none", error: "key not found" });
-  } else {
+  if (key) {
     for (const model of MODELS) {
       try {
         const res = await fetch(
@@ -44,14 +54,13 @@ export async function GET(req: Request) {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               contents: [{ parts: [{ text: prompt }] }],
+              generationConfig: {
+                thinkingConfig: { thinkingBudget: 0 },
+              },
             }),
           }
         );
-        if (!res.ok) {
-          const errText = await res.text();
-          debug.push({ model, status: res.status, error: errText.slice(0, 200) });
-          continue;
-        }
+        if (!res.ok) continue;
         const data: any = await res.json();
         const parts: Array<{ text?: string }> =
           data?.candidates?.[0]?.content?.parts || [];
@@ -62,7 +71,7 @@ export async function GET(req: Request) {
           .split("\n")
           .map((l: string) => l.trim().replace(/^\d+[.)-]?\s*/, ""))
           .filter((l: string) => l.includes("|"));
-        const meals = lines.slice(-3).map((line: string) => {
+        const meals = lines.slice(0, 3).map((line: string) => {
           const p: string[] = line.split("|").map((x: string) => x.trim());
           return {
             name: p[0] || "غذای ساده",
@@ -73,13 +82,11 @@ export async function GET(req: Request) {
         if (meals.length > 0) {
           return NextResponse.json({ meals, source: "ai" });
         }
-        debug.push({ model, error: "parsed 0 meals" });
-      } catch (e: unknown) {
-        debug.push({ model, error: String(e) });
+      } catch {
         continue;
       }
     }
   }
 
-  return NextResponse.json({ meals: FALLBACK, source: "fallback", debug });
+  return NextResponse.json({ meals: FALLBACK, source: "fallback" });
 }
