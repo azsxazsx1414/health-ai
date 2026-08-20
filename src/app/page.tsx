@@ -18,6 +18,7 @@ import {
   UtensilsCrossed,
   Weight,
   User,
+  Moon,
 } from "lucide-react";
 import { auth, db } from "@/lib/firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
@@ -34,6 +35,8 @@ export default function Home() {
   const [saved, setSaved] = useState(false);
   const [meals, setMeals] = useState<Meal[]>([]);
   const [mealsLoading, setMealsLoading] = useState(false);
+  const [waterIn, setWaterIn] = useState("");
+const [sleep, setSleep] = useState("");
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (user) => {
@@ -46,6 +49,8 @@ export default function Home() {
     const w = parseFloat(weight) || 70;
     const s = parseFloat(steps) || 5000;
     const t = parseFloat(temp) || 25;
+    const wc = parseFloat(waterIn) || 0;
+const sl = parseFloat(sleep) || 0;
 
     const water = Number(
       (w * 0.033 + (s / 1000) * 0.25 + Math.max(0, t - 25) * 0.15).toFixed(1)
@@ -75,6 +80,8 @@ export default function Home() {
           weight: w,
           steps: s,
           temperature: t,
+          water_consumed: wc,
+sleep: sl,
           water,
           calories,
         });
@@ -189,7 +196,32 @@ export default function Home() {
               />
             </label>
           </div>
-
+          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+            <label className="block">
+              <span className="mb-2 flex items-center gap-2 text-sm text-gray-300">
+                <Droplets className="h-4 w-4 text-blue-400" /> آب مصرفی امروز (لیتر) — اختیاری
+              </span>
+              <input
+                value={waterIn}
+                onChange={(e) => setWaterIn(e.target.value)}
+                inputMode="decimal"
+                placeholder="مثلاً 2"
+                className="input-glass w-full rounded-xl px-4 py-3"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-2 flex items-center gap-2 text-sm text-gray-300">
+                <Moon className="h-4 w-4 text-purple-400" /> خواب دیشب (ساعت) — اختیاری
+              </span>
+              <input
+                value={sleep}
+                onChange={(e) => setSleep(e.target.value)}
+                inputMode="decimal"
+                placeholder="مثلاً 7"
+                className="input-glass w-full rounded-xl px-4 py-3"
+              />
+            </label>
+          </div>
           <button
             onClick={showPlan}
             className="btn-glow mt-6 w-full rounded-xl py-4 text-lg font-bold text-white"

@@ -2,7 +2,13 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Droplets, Weight } from "lucide-react";
+import {
+  ArrowRight,
+  Droplets,
+  Footprints,
+  Moon,
+  Weight,
+} from "lucide-react";
 import {
   CartesianGrid,
   Line,
@@ -14,7 +20,14 @@ import {
 } from "recharts";
 import { auth, db } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  where,
+} from "firebase/firestore";
 
 type Log = {
   log_date: string;
@@ -22,12 +35,15 @@ type Log = {
   weight: number;
   steps: number;
   calories: number;
+  water_consumed?: number;
+  sleep?: number;
 };
 
 export default function DashboardPage() {
   const [logs, setLogs] = useState<Log[]>([]);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
+  const [height, setHeight] = useState(0);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
@@ -38,16 +54,52 @@ export default function DashboardPage() {
           const q = query(collection(db, "logs"), where("user_id", "==", uid));
           const snap = await getDocs(q);
           const rows = snap.docs.map((d) => d.data() as Log);
-          rows.sort((a, b) => a.log_date.localeCompare(b.log_date));
+          rows.sort((a, b) =>
+            String(a.log_date || "").localeCompare(String(b.log_date || ""))
+          );
           setLogs(rows);
+          const pSnap = await getDoc(doc(db, "users", uid));
+          if (pSnap.exists()) {
+            const pd: any = pSnap.data();
+            setHeight(Number(pd.height) || 0);
+          }
         } catch {
-          setLogs([]);
+          /* ignore */
         }
       }
       setLoading(false);
     });
     return unsub;
   }, []);
+
+  const latest = logs.length > 0 ? logs[logs.length - 1] : null;
+
+  let waterPart = 0;
+  let stepsPart = 0;
+  let sleepPart = 0;
+  let bmiPart = 0;
+  if (latest) {
+    const wc = Number(latest.water_consumed) || 0;
+    waterPart =
+      wc > 0 ? Math.min(wc / (Number(latest.water) || 2.5), 1) * 25 : 0;
+    stepsPart = Math.min((Number(latest.steps) || 0) / 8000, 1) * 25;
+    const sl = Number(latest.sleep) || 0;
+    sleepPart = sl > 0 ? Math.max(0, 25 - Math.abs(sl - 8) * 4) : 0;
+    if (height > 0) {
+      const bmi = (Number(latest.weight) || 0) / Math.pow(height / 100, 2);
+      bmiPart =
+        bmi >= 18.5 && bmi < 25
+          ? 25
+          : Math.max(0, 25 - Math.abs(bmi - 22) * 1.5);
+    }
+  }
+  const score = Math.round(waterPart + stepsPart + sleepPart + bmiPart);
+  const scoreColor =
+    score >= 80
+      ? "text-brand-400"
+      : score >= 50
+        ? "text-orange-400"
+        : "text-red-400";
 
   const chartData = logs.map((l) => ({
     ...l,
@@ -87,73 +139,128 @@ export default function DashboardPage() {
           <div className="glass mx-auto mt-20 max-w-md rounded-3xl p-10 text-center">
             <p className="text-lg font-bold">هنوز تاریخچه‌ای نداری!</p>
             <p className="mt-3 text-sm text-gray-400">
-              از صفحه اصلی یه برنامه بگیر تا نمودارش اینجا ظاهر شه.
+              از صفحه اصلی یه برنامه بگیر تا امتیاز و نمودارها اینجا ظاهر بشن.
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-6 pt-8 lg:grid-cols-2">
-            <div className="glass rounded-3xl p-6">
-              <h2 className="mb-4 flex items-center gap-2 text-lg font-bold">
-                <Droplets className="h-5 w-5 text-blue-400" /> نمودار آب (لیتر)
-              </h2>
-              <div className="h-64 w-full" dir="ltr">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={chartData}>
-                    <CartesianGrid stroke="rgba(255,255,255,0.08)" />
-                    <XAxis dataKey="date" stroke="#9ca3af" fontSize={12} />
-                    <YAxis stroke="#9ca3af" fontSize={12} />
-                    <Tooltip
-                      contentStyle={{
-                        background: "#0f172a",
-                        border: "1px solid rgba(255,255,255,0.1)",
-                        borderRadius: 12,
-                      }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="water"
-                      stroke="#38bdf8"
-                      strokeWidth={3}
-                      dot={{ r: 4 }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
+          <>
+            <div className="glass mb-6 rounded-3xl p-6">
+              <div className="flex flex-col items-center gap-6 md:flex-row">
+                <div className="text-center">
+                  <p className={`text-6xl font-black ${scoreColor}`}>
+                    {score.toLocaleString("fa-IR")}
+                  </p>
+                  <p className="mt-1 text-sm text-gray-400">
+                    امتیاز سلامت امروز (از ۱۰۰)
+                  </p>
+                </div>
+                <div className="grid w-full flex-1 grid-cols-2 gap-3 md:grid-cols-4">
+                  <div className="rounded-2xl bg-white/5 p-3 text-center">
+                    <Droplets className="mx-auto h-5 w-5 text-blue-400" />
+                    <p className="mt-1 text-sm font-bold">
+                      {Math.round(waterPart).toLocaleString("fa-IR")} / ۲۵
+                    </p>
+                    <p className="text-xs text-gray-400">آب مصرفی</p>
+                  </div>
+                  <div className="rounded-2xl bg-white/5 p-3 text-center">
+                    <Footprints className="mx-auto h-5 w-5 text-brand-400" />
+                    <p className="mt-1 text-sm font-bold">
+                      {Math.round(stepsPart).toLocaleString("fa-IR")} / ۲۵
+                    </p>
+                    <p className="text-xs text-gray-400">فعالیت</p>
+                  </div>
+                  <div className="rounded-2xl bg-white/5 p-3 text-center">
+                    <Moon className="mx-auto h-5 w-5 text-purple-400" />
+                    <p className="mt-1 text-sm font-bold">
+                      {Math.round(sleepPart).toLocaleString("fa-IR")} / ۲۵
+                    </p>
+                    <p className="text-xs text-gray-400">خواب</p>
+                  </div>
+                  <div className="rounded-2xl bg-white/5 p-3 text-center">
+                    <Weight className="mx-auto h-5 w-5 text-orange-400" />
+                    <p className="mt-1 text-sm font-bold">
+                      {Math.round(bmiPart).toLocaleString("fa-IR")} / ۲۵
+                    </p>
+                    <p className="text-xs text-gray-400">وزن (BMI)</p>
+                  </div>
+                </div>
               </div>
+              {latest &&
+                ((Number(latest.water_consumed) || 0) === 0 ||
+                  (Number(latest.sleep) || 0) === 0) && (
+                  <p className="mt-4 text-center text-xs text-gray-400">
+                    برای امتیاز کامل، آب مصرفی و خوابت رو هم توی فرم صفحه اصلی
+                    ثبت کن.
+                  </p>
+                )}
             </div>
 
-            <div className="glass rounded-3xl p-6">
-              <h2 className="mb-4 flex items-center gap-2 text-lg font-bold">
-                <Weight className="h-5 w-5 text-brand-400" /> نمودار وزن (کیلوگرم)
-              </h2>
-              <div className="h-64 w-full" dir="ltr">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={chartData}>
-                    <CartesianGrid stroke="rgba(255,255,255,0.08)" />
-                    <XAxis dataKey="date" stroke="#9ca3af" fontSize={12} />
-                    <YAxis
-                      stroke="#9ca3af"
-                      fontSize={12}
-                      domain={["dataMin - 2", "dataMax + 2"]}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        background: "#0f172a",
-                        border: "1px solid rgba(255,255,255,0.1)",
-                        borderRadius: 12,
-                      }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="weight"
-                      stroke="#10b981"
-                      strokeWidth={3}
-                      dot={{ r: 4 }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <div className="glass rounded-3xl p-6">
+                <h2 className="mb-4 flex items-center gap-2 text-lg font-bold">
+                  <Droplets className="h-5 w-5 text-blue-400" /> نمودار آب (لیتر)
+                </h2>
+                <div className="h-64 w-full" dir="ltr">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={chartData}>
+                      <CartesianGrid stroke="rgba(255,255,255,0.08)" />
+                      <XAxis dataKey="date" stroke="#9ca3af" fontSize={12} />
+                      <YAxis stroke="#9ca3af" fontSize={12} />
+                      <Tooltip
+                        contentStyle={{
+                          background: "#0f172a",
+                          border: "1px solid rgba(255,255,255,0.1)",
+                          borderRadius: 12,
+                          direction: "rtl",
+                        }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="water"
+                        stroke="#38bdf8"
+                        strokeWidth={3}
+                        dot={{ r: 4 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              <div className="glass rounded-3xl p-6">
+                <h2 className="mb-4 flex items-center gap-2 text-lg font-bold">
+                  <Weight className="h-5 w-5 text-brand-400" /> نمودار وزن (کیلوگرم)
+                </h2>
+                <div className="h-64 w-full" dir="ltr">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={chartData}>
+                      <CartesianGrid stroke="rgba(255,255,255,0.08)" />
+                      <XAxis dataKey="date" stroke="#9ca3af" fontSize={12} />
+                      <YAxis
+                        stroke="#9ca3af"
+                        fontSize={12}
+                        domain={["dataMin - 2", "dataMax + 2"]}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          background: "#0f172a",
+                          border: "1px solid rgba(255,255,255,0.1)",
+                          borderRadius: 12,
+                          direction: "rtl",
+                        }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="weight"
+                        stroke="#10b981"
+                        strokeWidth={3}
+                        dot={{ r: 4 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
             </div>
-          </div>
+          </>
         )}
       </main>
     </div>
